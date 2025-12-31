@@ -13,11 +13,11 @@ export function toast({
   type?: ToastType;
   duration?: number;
 }) {
-  return toastManager.create({
+  return toastManager.add({
     title,
     description,
     type,
-    duration,
+    timeout: duration,
   });
 }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-guard";
 import { linkService } from "@/lib/services/link.service";
+import { linkUpdateSchema } from "@/lib/validations/schemas";
 import { db } from "@/lib/db";
 
 export async function PATCH(
@@ -10,7 +11,7 @@ export async function PATCH(
   try {
     const session = await requireAuth();
     const { id } = await params;
-    const data = await req.json();
+    const body = await req.json();
 
     const link = await db.link.findUnique({ where: { id } });
     if (!link) {
@@ -25,6 +26,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    const data = linkUpdateSchema.parse(body);
     await linkService.update(id, data);
 
     return NextResponse.json({ success: true });
@@ -32,8 +34,16 @@ export async function PATCH(
     if (error instanceof Error && error.message.includes("redirect")) {
       throw error;
     }
+    if (error && typeof error === "object" && "issues" in error) {
+      const zodError = error as { issues: Array<{ path: string[]; message: string }> };
+      const firstError = zodError.issues[0];
+      return NextResponse.json(
+        { error: firstError?.message || "Validation failed" },
+        { status: 400 }
+      );
+    }
     return NextResponse.json(
-      { error: "Failed to update link" },
+      { error: error instanceof Error ? error.message : "Failed to update link" },
       { status: 500 }
     );
   }

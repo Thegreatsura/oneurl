@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sanitizeTitle, sanitizeUrl } from "../sanitize";
 
 export const usernameSchema = z
   .string()
@@ -8,8 +9,16 @@ export const usernameSchema = z
   .toLowerCase();
 
 export const linkSchema = z.object({
-  title: z.string().min(1, "Title is required").max(50, "Title must be at most 50 characters"),
-  url: z.string().url("Invalid URL format"),
+  title: z
+    .string()
+    .min(1, "Title is required")
+    .max(50, "Title must be at most 50 characters")
+    .transform((val) => sanitizeTitle(val)),
+  url: z
+    .string()
+    .url("Invalid URL format")
+    .transform((val) => sanitizeUrl(val))
+    .refine((val) => val.length > 0, "Invalid URL format"),
   icon: z.string().optional(),
 });
 
@@ -19,9 +28,11 @@ export const profileSchema = z.object({
   theme: z.string().default("default"),
 });
 
-export const linkUpdateSchema = linkSchema.extend({
-  id: z.string().optional(),
-  position: z.number().int().min(0),
-  isActive: z.boolean().default(true),
-});
+export const linkUpdateSchema = linkSchema
+  .extend({
+    id: z.string().optional(),
+    position: z.number().int().min(0),
+    isActive: z.boolean().default(true),
+  })
+  .partial();
 

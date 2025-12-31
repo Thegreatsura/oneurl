@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { authClient } from "@/lib/auth-client";
 import type { OurFileRouter } from "@/lib/uploadthing";
-import { toastSuccess, toastError } from "@/lib/toast";
+import { useUpdateProfile, useUpdateAvatar } from "@/lib/hooks/use-profile";
 
 export default function SettingsClient({
   initialProfile,
@@ -23,47 +23,20 @@ export default function SettingsClient({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialProfile.avatarUrl);
   const [isUploading, setIsUploading] = useState(false);
 
+  const updateProfile = useUpdateProfile();
+  const updateAvatar = useUpdateAvatar();
+
   const handleUploadComplete = async (res: { url: string }[]) => {
     if (res && res[0]?.url) {
       const newAvatarUrl = res[0].url;
       setAvatarUrl(newAvatarUrl);
       setIsUploading(false);
-
-      try {
-        const avatarRes = await fetch("/api/profile/avatar", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ avatarUrl: newAvatarUrl }),
-        });
-
-        if (avatarRes.ok) {
-          toastSuccess("Avatar updated successfully!");
-        } else {
-          toastError("Failed to update avatar");
-        }
-      } catch {
-        toastError("Failed to update avatar");
-      }
+      await updateAvatar.mutateAsync(newAvatarUrl);
     }
   };
 
   const handleSave = async () => {
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, bio, username }),
-      });
-
-      if (res.ok) {
-        toastSuccess("Profile updated successfully!");
-      } else {
-        const data = await res.json();
-        toastError("Failed to update profile", data.error || "Please try again");
-      }
-    } catch {
-      toastError("Failed to update profile");
-    }
+    await updateProfile.mutateAsync({ name, bio, username });
   };
 
   const handleSignOut = async () => {
@@ -111,12 +84,11 @@ export default function SettingsClient({
                 onClientUploadComplete={handleUploadComplete}
                 onUploadError={() => {
                   setIsUploading(false);
-                  toastError("Failed to upload avatar");
                 }}
                 content={{
                   button: ({ ready }: { ready: boolean }) => (
-                    <Button type="button" disabled={!ready || isUploading}>
-                      {isUploading ? "Uploading..." : "Change Avatar"}
+                    <Button type="button" disabled={!ready || isUploading || updateAvatar.isPending}>
+                      {isUploading || updateAvatar.isPending ? "Uploading..." : "Change Avatar"}
                     </Button>
                   ),
                 }}
@@ -136,6 +108,7 @@ export default function SettingsClient({
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                disabled={updateProfile.isPending}
               />
             </div>
             <div className="space-y-2">
@@ -144,6 +117,7 @@ export default function SettingsClient({
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                disabled={updateProfile.isPending}
               />
             </div>
             <div className="space-y-2">
@@ -153,9 +127,12 @@ export default function SettingsClient({
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 rows={4}
+                disabled={updateProfile.isPending}
               />
             </div>
-            <Button onClick={handleSave}>Save Changes</Button>
+            <Button onClick={handleSave} disabled={updateProfile.isPending}>
+              {updateProfile.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </CardContent>
         </Card>
 
@@ -173,4 +150,3 @@ export default function SettingsClient({
     </div>
   );
 }
-

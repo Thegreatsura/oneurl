@@ -76,14 +76,19 @@ export async function trackClicksBatch(events: ClickEvent[]): Promise<boolean> {
 
 export async function queryTinybird(
   pipe: string,
-  params?: Record<string, string>
+  params?: Record<string, string | undefined>
 ): Promise<Record<string, unknown>[] | null> {
   if (!TINYBIRD_TOKEN) {
     return null;
   }
 
   try {
-    const queryParams = new URLSearchParams(params);
+    const filteredParams = Object.fromEntries(
+      Object.entries(params || {}).filter(([, value]) => value !== undefined)
+    );
+    const queryParams = new URLSearchParams(
+      filteredParams as Record<string, string>
+    );
     const response = await fetch(
       `${TINYBIRD_HOST}/v0/pipes/${pipe}.json?${queryParams}`,
       {
@@ -98,7 +103,7 @@ export async function queryTinybird(
       return data.data || [];
     }
   } catch (error) {
-    console.error("Failed to query Tinybird:", error);
+    console.error(`Failed to query Tinybird pipe ${pipe}:`, error);
   }
 
   return null;

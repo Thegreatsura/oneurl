@@ -1,0 +1,183 @@
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { linkSchema } from "@/lib/validations/schemas";
+import { toastSuccess, toastError } from "@/lib/toast";
+
+export type Link = {
+  id: string;
+  title: string;
+  url: string;
+  icon?: string | null;
+  position: number;
+  isActive: boolean;
+};
+
+export function useLinks() {
+  return useQuery({
+    queryKey: ["links"],
+    queryFn: async () => {
+      const res = await fetch("/api/links");
+      if (!res.ok) {
+        throw new Error("Failed to fetch links");
+      }
+      const data = await res.json();
+      return (data.links || []) as Link[];
+    },
+  });
+}
+
+export function useCreateLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: { title: string; url: string }) => {
+      const validated = linkSchema.parse(data);
+      const res = await fetch("/api/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: validated.title, url: validated.url }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to create link");
+      }
+
+      return res.json();
+    },
+    onMutate: async (newLink) => {
+      await queryClient.cancelQueries({ queryKey: ["links"] });
+
+      const previousLinks = queryClient.getQueryData<Link[]>(["links"]);
+
+      queryClient.setQueryData<Link[]>(["links"], (old = []) => {
+        const tempId = `temp-${Date.now()}`;
+        return [
+          ...old,
+          {
+            id: tempId,
+            title: newLink.title,
+            url: newLink.url,
+            position: old.length,
+            isActive: true,
+          },
+        ];
+      });
+
+      return { previousLinks };
+    },
+    onError: (err, newLink, context) => {
+      if (context?.previousLinks) {
+        queryClient.setQueryData(["links"], context.previousLinks);
+      }
+      toastError("Failed to add link", err.message);
+    },
+    onSuccess: () => {
+      toastSuccess("Link added successfully");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+  });
+}
+
+export function useUpdateLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { title?: string; url?: string; isActive?: boolean };
+    }) => {
+      const res = await fetch(`/api/links/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to update link");
+      }
+
+      return res.json();
+    },
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["links"] });
+
+      const previousLinks = queryClient.getQueryData<Link[]>(["links"]);
+
+      queryClient.setQueryData<Link[]>(["links"], (old = []) => {
+        return old.map((link) =>
+          link.id === id ? { ...link, ...data } : link
+        );
+      });
+
+      return { previousLinks };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousLinks) {
+        queryClient.setQueryData(["links"], context.previousLinks);
+      }
+      toastError("Failed to update link", err.message);
+    },
+    onSuccess: (_, variables) => {
+      if (variables.data.isActive !== undefined) {
+        toastSuccess(
+          `Link ${variables.data.isActive ? "enabled" : "disabled"} successfully`
+        );
+      } else if (variables.data.title || variables.data.url) {
+        toastSuccess("Link updated successfully");
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+  });
+}
+
+export function useDeleteLink() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/links/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to delete link");
+      }
+
+      return res.json();
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["links"] });
+
+      const previousLinks = queryClient.getQueryData<Link[]>(["links"]);
+
+      queryClient.setQueryData<Link[]>(["links"], (old = []) => {
+        return old.filter((link) => link.id !== id);
+      });
+
+      return { previousLinks };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousLinks) {
+        queryClient.setQueryData(["links"], context.previousLinks);
+      }
+      toastError("Failed to delete link", err.message);
+    },
+    onSuccess: () => {
+      toastSuccess("Link deleted successfully");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+  });
+}
+

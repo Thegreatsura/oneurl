@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/auth-guard";
-import { queryTinybird } from "@/lib/tinybird";
+import { analyticsService } from "@/lib/services/analytics.service";
 import { db } from "@/lib/db";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
@@ -10,32 +10,13 @@ export default async function AnalyticsPage() {
     include: { links: true },
   });
 
-  let stats = {
-    totalClicks: 0,
-    clicksByLink: [] as Record<string, unknown>[],
-    clicksOverTime: [] as Record<string, unknown>[],
-  };
-
-  if (profile) {
-    const clicksByLink = await queryTinybird("clicks_by_link", {
-      profile_id: profile.id,
-    });
-
-    const clicksOverTime = await queryTinybird("clicks_over_time", {
-      profile_id: profile.id,
-    });
-
-      stats = {
-        totalClicks:
-          clicksByLink?.reduce(
-            (sum: number, item: Record<string, unknown>) =>
-              sum + (Number(item.clicks) || 0),
-            0
-          ) || 0,
-        clicksByLink: clicksByLink || [],
-        clicksOverTime: clicksOverTime || [],
+  const stats = profile
+    ? await analyticsService.getProfileStats(profile.id)
+    : {
+        totalClicks: 0,
+        topLinks: [],
+        clicksOverTime: [],
       };
-  }
 
   return (
     <div className="p-8">
@@ -61,18 +42,23 @@ export default async function AnalyticsPage() {
             <CardTitle>Top Links</CardTitle>
           </CardHeader>
           <CardContent>
-            {stats?.clicksByLink && stats.clicksByLink.length > 0 ? (
+            {stats?.topLinks && stats.topLinks.length > 0 ? (
               <div className="space-y-2">
-                {stats.clicksByLink.slice(0, 5).map((item: Record<string, unknown>, index: number) => (
-                  <div key={index} className="flex justify-between">
-                    <span className="text-sm">
-                      {String(item.link_id || "Unknown")}
-                    </span>
-                    <span className="text-sm font-medium">
-                      {Number(item.clicks) || 0}
-                    </span>
-                  </div>
-                ))}
+                {stats.topLinks.slice(0, 5).map((item: Record<string, unknown>, index: number) => {
+                  const link = profile?.links.find(
+                    (l) => l.id === String(item.link_id)
+                  );
+                  return (
+                    <div key={index} className="flex justify-between">
+                      <span className="text-sm">
+                        {link?.title || String(item.link_id || "Unknown")}
+                      </span>
+                      <span className="text-sm font-medium">
+                        {Number(item.clicks) || 0}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No data yet</p>

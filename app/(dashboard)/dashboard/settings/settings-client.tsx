@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { authClient } from "@/lib/auth-client";
 import type { OurFileRouter } from "@/lib/uploadthing";
+import { toastSuccess, toastError } from "@/lib/toast";
 
 export default function SettingsClient({
   initialProfile,
@@ -36,10 +37,12 @@ export default function SettingsClient({
         });
 
         if (avatarRes.ok) {
-          alert("Avatar updated successfully!");
+          toastSuccess("Avatar updated successfully!");
+        } else {
+          toastError("Failed to update avatar");
         }
       } catch {
-        alert("Failed to update avatar");
+        toastError("Failed to update avatar");
       }
     }
   };
@@ -53,10 +56,13 @@ export default function SettingsClient({
       });
 
       if (res.ok) {
-        alert("Profile updated successfully!");
+        toastSuccess("Profile updated successfully!");
+      } else {
+        const data = await res.json();
+        toastError("Failed to update profile", data.error || "Please try again");
       }
     } catch {
-      alert("Failed to update profile");
+      toastError("Failed to update profile");
     }
   };
 
@@ -115,7 +121,7 @@ export default function SettingsClient({
                 onClientUploadComplete={handleUploadComplete}
                 onUploadError={() => {
                   setIsUploading(false);
-                  alert("Failed to upload avatar");
+                  toastError("Failed to upload avatar");
                 }}
                 content={{
                   button: ({ ready }: { ready: boolean }) => (

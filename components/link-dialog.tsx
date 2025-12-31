@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,8 +44,8 @@ export function LinkDialog({
   const [titleError, setTitleError] = useState("");
   const [urlError, setUrlError] = useState("");
 
-  const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) {
+  useEffect(() => {
+    if (open) {
       if (initialData) {
         setFormTitle(initialData.title);
         setFormUrl(initialData.url);
@@ -56,6 +56,11 @@ export function LinkDialog({
       setTitleError("");
       setUrlError("");
     }
+    // Necessary to sync form state when dialog opens with new initialData
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialData?.id]);
+
+  const handleOpenChange = (newOpen: boolean) => {
     onOpenChange(newOpen);
   };
 

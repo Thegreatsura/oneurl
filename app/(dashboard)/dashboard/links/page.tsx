@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link2, Plus, Edit, Trash2, Power, PowerOff } from "lucide-react";
+import { Link2, Plus, Edit, Trash2, Power, PowerOff, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import {
   useDeleteLink,
   type Link,
 } from "@/lib/hooks/use-links";
+import { useLinkClickCounts } from "@/lib/hooks/use-link-analytics";
 
 export default function LinksPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -40,6 +41,7 @@ export default function LinksPage() {
   const [linkToggling, setLinkToggling] = useState<string | null>(null);
 
   const { data: links = [], isLoading } = useLinks();
+  const { data: clickCounts = {}, isLoading: isLoadingCounts } = useLinkClickCounts();
   const createLink = useCreateLink();
   const updateLink = useUpdateLink();
   const deleteLink = useDeleteLink();
@@ -190,6 +192,18 @@ export default function LinksPage() {
                     <p className="text-sm text-muted-foreground truncate">
                       {link.url}
                     </p>
+                    <div className="flex items-center gap-4 mt-2">
+                      {isLoadingCounts ? (
+                        <Skeleton className="h-4 w-16" />
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <BarChart3 className="h-3 w-3" />
+                          <span>
+                            {clickCounts[link.id] || 0} {clickCounts[link.id] === 1 ? "click" : "clicks"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     {(isDeleting || isToggling) && (
                       <p className="text-xs text-muted-foreground mt-1">
                         Processing...

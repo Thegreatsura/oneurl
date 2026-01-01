@@ -86,7 +86,6 @@ export default async function PublicProfilePage({ params }: Props) {
                 <LinkClickTracker
                   key={link.id}
                   linkId={link.id}
-                  profileId={user.profile!.id}
                 >
                   <a
                     href={link.url}

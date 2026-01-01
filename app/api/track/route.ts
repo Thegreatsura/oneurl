@@ -1,58 +1,91 @@
 import { NextResponse } from "next/server";
-import { trackClick } from "@/lib/tinybird";
 import { headers } from "next/headers";
+import { trackingService } from "@/lib/services/tracking.service";
+import { db } from "@/lib/db";
 
 export async function POST(req: Request) {
   try {
-    const { linkId, profileId } = await req.json();
+    const { linkId } = await req.json();
 
-    if (!linkId || !profileId) {
+    if (!linkId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing linkId" },
         { status: 400 }
       );
     }
 
+    const link = await db.link.findUnique({
+      where: { id: linkId },
+      select: { id: true, isActive: true },
+    });
+
+    if (!link || !link.isActive) {
+      return NextResponse.json(
+        { error: "Link not found or inactive" },
+        { status: 404 }
+      );
+    }
+
     const headersList = await headers();
-    const referrer = headersList.get("referer") || "";
-    const userAgent = headersList.get("user-agent") || "";
+    const dnt = headersList.get("dnt");
+    
+    if (dnt === "1") {
+      return NextResponse.json({ 
+        success: true, 
+        tracked: false, 
+        reason: "do_not_track" 
+      });
+    }
 
-    const device = /Mobile|Android|iPhone|iPad/.test(userAgent)
-      ? "mobile"
-      : "desktop";
-
-    const browser = userAgent.includes("Chrome")
-      ? "chrome"
-      : userAgent.includes("Firefox")
-        ? "firefox"
-        : userAgent.includes("Safari")
-          ? "safari"
-          : userAgent.includes("Edge")
-            ? "edge"
-            : "other";
+    const referrer = headersList.get("referer") || null;
+    const userAgent = headersList.get("user-agent") || null;
+    const ipAddress = headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+                      headersList.get("x-real-ip") ||
+                      null;
 
     const country = headersList.get("cf-ipcountry") || 
                     headersList.get("x-vercel-ip-country") || 
-                    undefined;
+                    null;
 
-    const tracked = await trackClick({
+    const allHeaders: Record<string, string | null> = {
+      "accept-language": headersList.get("accept-language"),
+      "accept-encoding": headersList.get("accept-encoding"),
+    };
+
+    const result = await trackingService.trackClickWithRetry({
       linkId,
-      profileId,
+      ipAddress,
+      userAgent,
       referrer,
-      device,
-      browser,
       country,
+      headers: allHeaders,
     });
 
-    if (!tracked) {
-      console.warn("Tinybird tracking failed - check TINYBIRD_TOKEN configuration");
+    if (!result.success && result.reason === "max_retries_exceeded") {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "Tracking temporarily unavailable",
+          retry: true 
+        },
+        { status: 503 }
+      );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: result.success,
+      tracked: result.tracked,
+      reason: result.reason,
+      idempotencyKey: result.idempotencyKey,
+    });
   } catch (error) {
     console.error("Error tracking click:", error);
     return NextResponse.json(
-      { error: "Failed to track click" },
+      { 
+        success: false,
+        error: "Failed to track click",
+        retry: true 
+      },
       { status: 500 }
     );
   }

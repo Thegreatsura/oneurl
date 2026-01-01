@@ -19,7 +19,7 @@ export const linkSchema = z.object({
     .url("Invalid URL format")
     .transform((val) => sanitizeUrl(val))
     .refine((val) => val.length > 0, "Invalid URL format"),
-  icon: z.string().optional(),
+  icon: z.string().optional().nullable(),
 });
 
 export const profileSchema = z.object({

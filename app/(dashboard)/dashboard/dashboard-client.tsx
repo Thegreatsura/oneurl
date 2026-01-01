@@ -2,10 +2,24 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Link2, Plus, Edit, Trash2, Power, PowerOff, BarChart3, RefreshCw, Link2Icon } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { Link2, Plus, RefreshCw, Link2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Empty,
@@ -24,13 +38,17 @@ import {
   AlertDialogClose,
 } from "@/components/ui/alert-dialog";
 import { LinkDialog } from "@/components/link-dialog";
+import { IconLinkDialog } from "@/components/icon-link-dialog";
 import { ProfilePreview } from "@/components/profile-preview";
 import { ShareDialog } from "@/components/share-dialog";
+import { IconLink } from "@/components/icon-link";
+import { SortableLinkItem } from "@/components/sortable-link-item";
 import {
   useLinks,
   useCreateLink,
   useUpdateLink,
   useDeleteLink,
+  useReorderLinks,
   type Link,
 } from "@/lib/hooks/use-links";
 import { useLinkClickCounts } from "@/lib/hooks/use-link-analytics";
@@ -48,8 +66,10 @@ interface DashboardClientProps {
 export function DashboardClient({ initialProfile }: DashboardClientProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [iconLinkDialogOpen, setIconLinkDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [linkToEdit, setLinkToEdit] = useState<Link | null>(null);
+  const [iconLinkToEdit, setIconLinkToEdit] = useState<Link | null>(null);
   const [linkToDelete, setLinkToDelete] = useState<string | null>(null);
   const [linkToggling, setLinkToggling] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -62,6 +82,14 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
   const createLink = useCreateLink();
   const updateLink = useUpdateLink();
   const deleteLink = useDeleteLink();
+  const reorderLinks = useReorderLinks();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const displayProfile = profile || initialProfile;
 
@@ -77,7 +105,7 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
     }
   };
 
-  const handleAdd = async (data: { title: string; url: string }) => {
+  const handleAdd = async (data: { title: string; url: string; icon?: string | null }) => {
     await createLink.mutateAsync(data);
     setAddDialogOpen(false);
   };
@@ -87,7 +115,7 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
     setEditDialogOpen(true);
   };
 
-  const handleUpdate = async (data: { title: string; url: string }) => {
+  const handleUpdate = async (data: { title: string; url: string; icon?: string | null }) => {
     if (!linkToEdit) return;
     await updateLink.mutateAsync({
       id: linkToEdit.id,
@@ -97,11 +125,41 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
     setLinkToEdit(null);
   };
 
+
   const handleEditDialogChange = (open: boolean) => {
     if (!open) {
       setLinkToEdit(null);
     }
     setEditDialogOpen(open);
+  };
+
+  const handleIconLinkClick = (link: Link) => {
+    setIconLinkToEdit(link);
+    setIconLinkDialogOpen(true);
+  };
+
+  const handleIconLinkSave = async (data: { title: string; url: string; icon?: string | null }) => {
+    if (!iconLinkToEdit) return;
+    await updateLink.mutateAsync({
+      id: iconLinkToEdit.id,
+      data,
+    });
+    setIconLinkDialogOpen(false);
+    setIconLinkToEdit(null);
+  };
+
+  const handleIconLinkRemove = async () => {
+    if (!iconLinkToEdit) return;
+    await deleteLink.mutateAsync(iconLinkToEdit.id);
+    setIconLinkDialogOpen(false);
+    setIconLinkToEdit(null);
+  };
+
+  const handleIconLinkDialogChange = (open: boolean) => {
+    if (!open) {
+      setIconLinkToEdit(null);
+    }
+    setIconLinkDialogOpen(open);
   };
 
   const handleDeleteClick = (id: string) => {
@@ -120,17 +178,35 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
     }
   };
 
-  const handleToggleActive = async (id: string, isActive: boolean) => {
+  const handleToggleActive = async (id: string, newIsActive: boolean) => {
     setLinkToggling(id);
     try {
       await updateLink.mutateAsync({
         id,
-        data: { isActive: !isActive },
+        data: { isActive: newIsActive },
       });
     } catch {
       // Error handled by mutation
     } finally {
       setLinkToggling(null);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const mainLinks = links.filter((link) => !link.icon);
+    const oldIndex = mainLinks.findIndex((link) => link.id === active.id);
+    const newIndex = mainLinks.findIndex((link) => link.id === over.id);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const reordered = arrayMove(mainLinks, oldIndex, newIndex);
+      const linkIds = reordered.map((link) => link.id);
+      reorderLinks.mutate(linkIds);
     }
   };
 
@@ -162,9 +238,14 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Your Links</h2>
+            <div>
+              <h2 className="text-xl font-semibold">Your Links</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage your icon links and main links
+              </p>
+            </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -199,81 +280,73 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {links.map((link) => {
-                const isDeleting = deleteLink.isPending && linkToDelete === link.id;
-                const isToggling = linkToggling === link.id;
+            <div className="space-y-6">
+              {(() => {
+                const iconLinks = links.filter((link) => link.icon);
+                const mainLinks = links.filter((link) => !link.icon);
 
                 return (
-                  <Card
-                    key={link.id}
-                    className={isDeleting || isToggling ? "opacity-60" : ""}
-                  >
-                    <CardContent className="flex items-center justify-between p-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium truncate">{link.title}</p>
-                          <Badge
-                            variant={link.isActive ? "success" : "outline"}
-                            size="sm"
+                  <>
+                    {iconLinks.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-medium text-muted-foreground">Icon Links</h3>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {iconLinks.map((link) => {
+                            const isDeleting = deleteLink.isPending && linkToDelete === link.id;
+                            const isToggling = linkToggling === link.id;
+
+                            return (
+                              <div
+                                key={link.id}
+                                className={isDeleting || isToggling ? "opacity-60" : ""}
+                              >
+                                <IconLink link={link} onClick={() => handleIconLinkClick(link)} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {mainLinks.length > 0 && (
+                      <div className="space-y-3">
+                        <h3 className="text-sm font-medium text-muted-foreground">Main Links</h3>
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={mainLinks.map((link) => link.id)}
+                            strategy={verticalListSortingStrategy}
                           >
-                            {link.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {link.url}
-                        </p>
-                        <div className="flex items-center gap-4 mt-2">
-                          {isLoadingCounts ? (
-                            <Skeleton className="h-4 w-16" />
-                          ) : (
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <BarChart3 className="h-3 w-3" />
-                              <span>
-                                {clickCounts[link.id] || 0} {clickCounts[link.id] === 1 ? "click" : "clicks"}
-                              </span>
+                            <div className="space-y-2">
+                              {mainLinks.map((link) => {
+                                const isDeleting = deleteLink.isPending && linkToDelete === link.id;
+                                const isToggling = linkToggling === link.id;
+
+                                return (
+                                  <SortableLinkItem
+                                    key={link.id}
+                                    link={link}
+                                    clickCount={clickCounts[link.id] || 0}
+                                    isLoadingCounts={isLoadingCounts}
+                                    isDeleting={isDeleting}
+                                    isToggling={isToggling}
+                                    onToggleActive={handleToggleActive}
+                                    onEdit={handleEditClick}
+                                    onDelete={handleDeleteClick}
+                                  />
+                                );
+                              })}
                             </div>
-                          )}
-                        </div>
+                          </SortableContext>
+                        </DndContext>
                       </div>
-                      <div className="flex gap-2 ml-4">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleToggleActive(link.id, link.isActive)}
-                          disabled={isToggling || isDeleting}
-                        >
-                          {link.isActive ? (
-                            <>
-                              <PowerOff className="h-4 w-4" />
-                            </>
-                          ) : (
-                            <>
-                              <Power className="h-4 w-4" />
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditClick(link)}
-                          disabled={isToggling || isDeleting}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive-outline"
-                          onClick={() => handleDeleteClick(link.id)}
-                          disabled={isToggling || isDeleting}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           )}
         </div>
@@ -334,6 +407,15 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
         title="Edit Link"
         description="Update the title and URL for this link."
         submitLabel="Save Changes"
+      />
+
+      <IconLinkDialog
+        open={iconLinkDialogOpen}
+        onOpenChange={handleIconLinkDialogChange}
+        onSave={handleIconLinkSave}
+        onRemove={handleIconLinkRemove}
+        isPending={updateLink.isPending}
+        link={iconLinkToEdit}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -31,12 +31,16 @@ export function useCreateLink() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { title: string; url: string }) => {
+    mutationFn: async (data: { title: string; url: string; icon?: string | null }) => {
       const validated = linkSchema.parse(data);
       const res = await fetch("/api/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: validated.title, url: validated.url }),
+        body: JSON.stringify({ 
+          title: validated.title, 
+          url: validated.url,
+          icon: validated.icon || null
+        }),
       });
 
       if (!res.ok) {
@@ -59,6 +63,7 @@ export function useCreateLink() {
             id: tempId,
             title: newLink.title,
             url: newLink.url,
+            icon: newLink.icon || null,
             position: old.length,
             isActive: true,
           },
@@ -91,7 +96,7 @@ export function useUpdateLink() {
       data,
     }: {
       id: string;
-      data: { title?: string; url?: string; isActive?: boolean };
+      data: { title?: string; url?: string; icon?: string | null; isActive?: boolean };
     }) => {
       const res = await fetch(`/api/links/${id}`, {
         method: "PATCH",
@@ -174,6 +179,51 @@ export function useDeleteLink() {
     },
     onSuccess: () => {
       toastSuccess("Link deleted successfully");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["links"] });
+    },
+  });
+}
+
+export function useReorderLinks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (linkIds: string[]) => {
+      const res = await fetch("/api/links/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkIds }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to reorder links");
+      }
+
+      return res.json();
+    },
+    onMutate: async (linkIds) => {
+      await queryClient.cancelQueries({ queryKey: ["links"] });
+
+      const previousLinks = queryClient.getQueryData<Link[]>(["links"]);
+
+      queryClient.setQueryData<Link[]>(["links"], (old = []) => {
+        const linkMap = new Map(old.map((link) => [link.id, link]));
+        return linkIds.map((id) => linkMap.get(id)).filter(Boolean) as Link[];
+      });
+
+      return { previousLinks };
+    },
+    onError: (err, linkIds, context) => {
+      if (context?.previousLinks) {
+        queryClient.setQueryData(["links"], context.previousLinks);
+      }
+      toastError("Failed to reorder links", err.message);
+    },
+    onSuccess: () => {
+      toastSuccess("Links reordered successfully");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["links"] });

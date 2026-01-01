@@ -4,18 +4,42 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { LinkForm, type Link } from "@/components/link-form";
+import { LinkDialog } from "@/components/link-dialog";
+import { IconLinkDialog } from "@/components/icon-link-dialog";
+import { Plus, Trash2 } from "lucide-react";
 import { toastSuccess, toastError } from "@/lib/toast";
+import { IconLink } from "@/components/icon-link";
+
+type Link = {
+  id: string;
+  title: string;
+  url: string;
+  icon?: string | null;
+  position?: number;
+  isActive?: boolean;
+};
 
 export default function LinksPage() {
   const router = useRouter();
   const [links, setLinks] = useState<Link[]>([]);
   const [globalError, setGlobalError] = useState("");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [iconLinkDialogOpen, setIconLinkDialogOpen] = useState(false);
+  const [iconLinkToEdit, setIconLinkToEdit] = useState<Link | null>(null);
 
-  const handleAddLink = (link: Link) => {
-    setLinks([...links, link]);
+  const handleAddLink = async (data: { title: string; url: string; icon?: string | null }) => {
+    const newLink: Link = {
+      id: `temp-${Date.now()}`,
+      title: data.title,
+      url: data.url,
+      icon: data.icon ?? null,
+      position: links.length,
+      isActive: true,
+    };
+    setLinks([...links, newLink]);
+    setAddDialogOpen(false);
     setGlobalError("");
-    toastSuccess("Link added", `${link.title} has been added to your profile`);
+    toastSuccess("Link added", `${data.title} has been added to your profile`);
   };
 
   const removeLink = (id: string) => {
@@ -25,6 +49,33 @@ export default function LinksPage() {
     if (linkToRemove) {
       toastSuccess("Link removed", `${linkToRemove.title} has been removed`);
     }
+  };
+
+  const handleIconLinkClick = (link: Link) => {
+    setIconLinkToEdit({
+      ...link,
+      position: link.position ?? 0,
+      isActive: link.isActive ?? true,
+    });
+    setIconLinkDialogOpen(true);
+  };
+
+  const handleIconLinkSave = async (data: { title: string; url: string; icon?: string | null }) => {
+    if (!iconLinkToEdit) return;
+    setLinks(links.map(link => 
+      link.id === iconLinkToEdit.id 
+        ? { ...link, title: data.title, url: data.url, icon: data.icon }
+        : link
+    ));
+    setIconLinkDialogOpen(false);
+    setIconLinkToEdit(null);
+  };
+
+  const handleIconLinkRemove = async () => {
+    if (!iconLinkToEdit) return;
+    removeLink(iconLinkToEdit.id);
+    setIconLinkDialogOpen(false);
+    setIconLinkToEdit(null);
   };
 
   const handleContinue = async () => {
@@ -70,37 +121,98 @@ export default function LinksPage() {
           </p>
         </div>
 
-        <LinkForm onAddLink={handleAddLink} />
+        <div className="flex justify-center">
+          <Button
+            onClick={() => setAddDialogOpen(true)}
+            variant="outline"
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Link
+          </Button>
+        </div>
 
         {globalError && (
           <p className="text-sm text-destructive text-center">{globalError}</p>
         )}
 
         {links.length > 0 && (
-          <div className="space-y-3">
-            <h3 className="font-medium text-sm">Your Links</h3>
-            <div className="space-y-2">
-              {links.map((link) => (
-                <Card key={link.id}>
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{link.title}</p>
-                      <p className="text-sm text-muted-foreground truncate">{link.url}</p>
+          <div className="space-y-6">
+            {(() => {
+              const iconLinks = links.filter((link) => link.icon);
+              const mainLinks = links.filter((link) => !link.icon);
+
+              return (
+                <>
+                  {iconLinks.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium text-muted-foreground">Icon Links</h3>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {iconLinks.map((link) => (
+                          <div key={link.id}>
+                            <IconLink 
+                              link={{ ...link, position: link.position ?? 0, isActive: link.isActive ?? true }} 
+                              onClick={() => handleIconLinkClick(link)}
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <Button
-                      variant="destructive-outline"
-                      size="sm"
-                      onClick={() => removeLink(link.id)}
-                      className="ml-4 shrink-0"
-                    >
-                      Remove
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                  )}
+
+                  {mainLinks.length > 0 && (
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium text-muted-foreground">Main Links</h3>
+                      <div className="space-y-2">
+                        {mainLinks.map((link) => (
+                          <Card key={link.id}>
+                            <CardContent className="flex items-center justify-between py-3">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium truncate text-sm">{link.title}</p>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{link.url}</p>
+                              </div>
+                              <Button
+                                variant="destructive-outline"
+                                size="sm"
+                                onClick={() => removeLink(link.id)}
+                                className="ml-4 shrink-0"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
+
+        <LinkDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSubmit={handleAddLink}
+          title="Add New Link"
+          description="Add a new link to your profile. Enter a title and URL."
+          submitLabel="Add Link"
+        />
+
+        <IconLinkDialog
+          open={iconLinkDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIconLinkToEdit(null);
+            }
+            setIconLinkDialogOpen(open);
+          }}
+          onSave={handleIconLinkSave}
+          onRemove={handleIconLinkRemove}
+          isPending={false}
+          link={iconLinkToEdit}
+        />
 
         <div className="flex justify-center pt-4">
           <Button

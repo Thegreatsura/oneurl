@@ -7,7 +7,7 @@
 - Google OAuth Authentication - Sign in with your Google account
 - Custom Profile Pages - Create personalized profile pages with your username
 - Link Management - Add, edit, and organize your links
-- Analytics - Track clicks and view detailed analytics (requires Tinybird setup)
+- Analytics - Track clicks and view detailed analytics
 - Customizable - Upload avatar, add bio, and customize your profile
 - Responsive Design - Works beautifully on all devices
 - Fast & Modern - Built with Next.js 16 and React 19
@@ -21,7 +21,6 @@
 - Styling: Tailwind CSS
 - UI Components: Base UI React
 - File Upload: UploadThing
-- Analytics: Tinybird (optional)
 
 ## Prerequisites
 
@@ -30,7 +29,6 @@ Before you begin, ensure you have:
 - Node.js 20+ or Bun installed
 - PostgreSQL database (local or cloud like Neon)
 - Google OAuth credentials
-- (Optional) Tinybird account for analytics
 - (Optional) UploadThing account for file uploads
 
 ## Getting Started
@@ -69,10 +67,6 @@ GOOGLE_CLIENT_SECRET="your-google-client-secret"
 # UploadThing (optional)
 UPLOADTHING_SECRET="your-uploadthing-secret"
 UPLOADTHING_APP_ID="your-uploadthing-app-id"
-
-# Tinybird (optional - for analytics)
-TINYBIRD_HOST="https://api.tinybird.co"
-TINYBIRD_TOKEN="your-tinybird-token"
 ```
 
 ### 4. Set Up Database
@@ -138,10 +132,6 @@ oneurl/
 2. Create a new app
 3. Copy your API keys to `.env`
 4. Configure the upload endpoint in `lib/uploadthing.ts`
-
-### Tinybird Analytics Setup (Optional)
-
-See [TINYBIRD_SETUP.md](./TINYBIRD_SETUP.md) for detailed instructions.
 
 ## Usage
 

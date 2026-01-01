@@ -10,6 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Field, FieldLabel, FieldControl, FieldDescription } from "@/components/ui/field";
 import { Fieldset } from "@/components/ui/fieldset";
 import { toastSuccess, toastError } from "@/lib/toast";
+import { useUploadThing } from "@/lib/uploadthing-client";
 
 interface AvatarClientProps {
   initialImageUrl: string | null;
@@ -30,43 +31,43 @@ export default function AvatarClient({
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Upload failed");
+  const { startUpload, isUploading: isUploadThingUploading } = useUploadThing("avatarUploader", {
+    onClientUploadComplete: async (res) => {
+      if (res && res[0]?.url) {
+        const newUrl = res[0].url;
+        setAvatarUrl(newUrl);
+        setUploadedUrl(newUrl);
+        setIsUploading(false);
+        
+        try {
+          await fetch("/api/profile/avatar", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ avatarUrl: newUrl }),
+          });
+          toastSuccess("Avatar uploaded", "Your profile picture has been updated");
+        } catch {
+          toastError("Upload failed", "Failed to save your avatar");
+        }
       }
-
-      const data = await res.json();
-      const newUrl = data.url;
-      setAvatarUrl(newUrl);
-      setUploadedUrl(newUrl);
-      
-      await fetch("/api/profile/avatar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl: newUrl }),
-      });
-      toastSuccess("Avatar uploaded", "Your profile picture has been updated");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to upload your image";
-      toastError("Upload failed", message);
-    } finally {
+    },
+    onUploadError: (error) => {
       setIsUploading(false);
-    }
-  }, []);
+      toastError("Upload failed", error.message || "Failed to upload your image");
+    },
+    onUploadBegin: () => {
+      setIsUploading(true);
+    },
+  });
+
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (!file) return;
+      await startUpload([file]);
+    },
+    [startUpload]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -75,7 +76,7 @@ export default function AvatarClient({
     },
     maxSize: 4 * 1024 * 1024,
     multiple: false,
-    disabled: isUploading,
+    disabled: isUploading || isUploadThingUploading,
   });
 
   const handleSkip = async () => {
@@ -148,10 +149,10 @@ export default function AvatarClient({
                       <input {...getInputProps()} />
                       <Button
                         type="button"
-                        disabled={isUploading}
+                        disabled={isUploading || isUploadThingUploading}
                         className="w-full"
                       >
-                        {isUploading
+                        {isUploading || isUploadThingUploading
                           ? "Uploading..."
                           : isDragActive
                           ? "Drop image here"

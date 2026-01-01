@@ -21,7 +21,8 @@ import {
   AlertDialogClose,
 } from "@/components/ui/alert-dialog";
 import { useUpdateProfile, useUpdateAvatar, useDeleteAccount } from "@/lib/hooks/use-profile";
-import { toastError } from "@/lib/toast";
+import { toastError, toastSuccess } from "@/lib/toast";
+import { useUploadThing } from "@/lib/uploadthing-client";
 
 export default function SettingsClient({
   initialProfile,
@@ -39,37 +40,38 @@ export default function SettingsClient({
   const updateAvatar = useUpdateAvatar();
   const deleteAccount = useDeleteAccount();
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || "Upload failed");
+  const { startUpload, isUploading: isUploadThingUploading } = useUploadThing("avatarUploader", {
+    onClientUploadComplete: async (res) => {
+      if (res && res[0]?.url) {
+        const newAvatarUrl = res[0].url;
+        setAvatarUrl(newAvatarUrl);
+        setIsUploading(false);
+        try {
+          await updateAvatar.mutateAsync(newAvatarUrl);
+          toastSuccess("Avatar updated", "Your profile picture has been updated");
+        } catch {
+          setAvatarUrl(initialProfile.avatarUrl);
+        }
       }
-
-      const data = await res.json();
-      const newAvatarUrl = data.url;
-      setAvatarUrl(newAvatarUrl);
-      await updateAvatar.mutateAsync(newAvatarUrl);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to upload image";
-      toastError("Upload failed", message);
-      setAvatarUrl(initialProfile.avatarUrl);
-    } finally {
+    },
+    onUploadError: (error) => {
       setIsUploading(false);
-    }
-  }, [updateAvatar, initialProfile.avatarUrl]);
+      toastError("Upload failed", error.message || "Failed to upload image");
+      setAvatarUrl(initialProfile.avatarUrl);
+    },
+    onUploadBegin: () => {
+      setIsUploading(true);
+    },
+  });
+
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (!file) return;
+      await startUpload([file]);
+    },
+    [startUpload]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -78,7 +80,7 @@ export default function SettingsClient({
     },
     maxSize: 4 * 1024 * 1024,
     multiple: false,
-    disabled: isUploading || updateAvatar.isPending,
+    disabled: isUploading || isUploadThingUploading || updateAvatar.isPending,
   });
 
   const handleSave = async (e: React.FormEvent) => {
@@ -136,10 +138,10 @@ export default function SettingsClient({
                         <input {...getInputProps()} />
                         <Button
                           type="button"
-                          disabled={isUploading || updateAvatar.isPending}
+                          disabled={isUploading || isUploadThingUploading || updateAvatar.isPending}
                           className="w-full"
                         >
-                          {isUploading || updateAvatar.isPending
+                          {isUploading || isUploadThingUploading || updateAvatar.isPending
                             ? "Uploading..."
                             : isDragActive
                             ? "Drop image here"

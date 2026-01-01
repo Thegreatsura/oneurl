@@ -16,6 +16,7 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Link2, Plus, RefreshCw, Link2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ import { LinkDialog } from "@/components/link-dialog";
 import { IconLinkDialog } from "@/components/icon-link-dialog";
 import { ProfilePreview } from "@/components/profile-preview";
 import { ShareDialog } from "@/components/share-dialog";
-import { IconLink } from "@/components/icon-link";
+import { SortableDashboardIconLink } from "@/components/sortable-dashboard-icon-link";
 import { SortableLinkItem } from "@/components/sortable-link-item";
 import {
   useLinks,
@@ -200,12 +201,22 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
     }
 
     const mainLinks = links.filter((link) => !link.icon);
-    const oldIndex = mainLinks.findIndex((link) => link.id === active.id);
-    const newIndex = mainLinks.findIndex((link) => link.id === over.id);
+    const iconLinks = links.filter((link) => link.icon);
 
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const reordered = arrayMove(mainLinks, oldIndex, newIndex);
-      const linkIds = reordered.map((link) => link.id);
+    const mainOldIndex = mainLinks.findIndex((link) => link.id === active.id);
+    const mainNewIndex = mainLinks.findIndex((link) => link.id === over.id);
+    const iconOldIndex = iconLinks.findIndex((link) => link.id === active.id);
+    const iconNewIndex = iconLinks.findIndex((link) => link.id === over.id);
+
+    if (mainOldIndex !== -1 && mainNewIndex !== -1) {
+      const reorderedMainLinks = arrayMove(mainLinks, mainOldIndex, mainNewIndex);
+      const allLinks = [...iconLinks, ...reorderedMainLinks];
+      const linkIds = allLinks.map((link) => link.id);
+      reorderLinks.mutate(linkIds);
+    } else if (iconOldIndex !== -1 && iconNewIndex !== -1) {
+      const reorderedIconLinks = arrayMove(iconLinks, iconOldIndex, iconNewIndex);
+      const allLinks = [...reorderedIconLinks, ...mainLinks];
+      const linkIds = allLinks.map((link) => link.id);
       reorderLinks.mutate(linkIds);
     }
   };
@@ -290,21 +301,33 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
                     {iconLinks.length > 0 && (
                       <div className="space-y-3">
                         <h3 className="text-sm font-medium text-muted-foreground">Icon Links</h3>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          {iconLinks.map((link) => {
-                            const isDeleting = deleteLink.isPending && linkToDelete === link.id;
-                            const isToggling = linkToggling === link.id;
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={iconLinks.map((link) => link.id)}
+                            strategy={horizontalListSortingStrategy}
+                          >
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {iconLinks.map((link) => {
+                                const isDeleting = deleteLink.isPending && linkToDelete === link.id;
+                                const isToggling = linkToggling === link.id;
 
-                            return (
-                              <div
-                                key={link.id}
-                                className={isDeleting || isToggling ? "opacity-60" : ""}
-                              >
-                                <IconLink link={link} onClick={() => handleIconLinkClick(link)} />
-                              </div>
-                            );
-                          })}
-                        </div>
+                                return (
+                                  <SortableDashboardIconLink
+                                    key={link.id}
+                                    link={link}
+                                    onEdit={handleIconLinkClick}
+                                    isDeleting={isDeleting}
+                                    isToggling={isToggling}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
                       </div>
                     )}
 

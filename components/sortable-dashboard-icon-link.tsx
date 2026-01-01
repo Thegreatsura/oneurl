@@ -1,10 +1,17 @@
 "use client";
 
+import { useState } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Link } from "@/lib/hooks/use-links";
+import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-interface IconLinkProps {
+interface SortableDashboardIconLinkProps {
   link: Link;
-  onClick?: () => void;
+  onEdit: (link: Link) => void;
+  isDeleting?: boolean;
+  isToggling?: boolean;
 }
 
 function getSocialIconColor(url: string): { bg: string; border: string } {
@@ -107,49 +114,88 @@ function getSocialIconTitle(url: string): string {
   return "Link";
 }
 
-export function IconLink({ link, onClick }: IconLinkProps) {
+export function SortableDashboardIconLink({
+  link,
+  onEdit,
+  isDeleting = false,
+  isToggling = false,
+}: SortableDashboardIconLinkProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: link.id });
+
   const colors = getSocialIconColor(link.url);
   const svgPath = getSocialIconSvg(link.url);
   const linkTitle = getSocialIconTitle(link.url);
 
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    }
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit(link);
   };
 
   return (
-    <a
-      href={link.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={handleClick}
-      aria-label={link.title || linkTitle}
-      className="inline-flex items-center justify-center text-white rounded-xl transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-100 focus:ring-zinc-400"
-      style={{
-        background: colors.bg,
-        border: `1px solid ${colors.border}`,
-        width: "44px",
-        height: "44px",
-      }}
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative group ${isDeleting || isToggling ? "opacity-60" : ""} ${isDragging ? "z-50" : ""}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {svgPath ? (
-        <svg
-          role="img"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-          width="20"
-          height="20"
-          fill="currentColor"
-          className="shrink-0"
+      <div
+        {...attributes}
+        {...listeners}
+        aria-label={link.title || linkTitle}
+        className="inline-flex items-center justify-center text-white rounded-xl transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-zinc-100 focus:ring-zinc-400 cursor-grab active:cursor-grabbing"
+        style={{
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
+          width: "44px",
+          height: "44px",
+        }}
+      >
+        {svgPath ? (
+          <svg
+            role="img"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            fill="currentColor"
+            className="shrink-0 pointer-events-none"
+          >
+            <title>{linkTitle}</title>
+            {svgPath}
+          </svg>
+        ) : (
+          <span className="text-lg leading-none pointer-events-none">{link.icon}</span>
+        )}
+      </div>
+      {isHovered && (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="absolute -top-1 -right-1 h-5 w-5 p-0 rounded-full shadow-sm z-10"
+          onClick={handleEditClick}
+          aria-label={`Edit ${link.title || linkTitle}`}
         >
-          <title>{linkTitle}</title>
-          {svgPath}
-        </svg>
-      ) : (
-        <span className="text-lg leading-none">{link.icon}</span>
+          <Pencil className="h-3 w-3" />
+        </Button>
       )}
-    </a>
+    </div>
   );
 }
 

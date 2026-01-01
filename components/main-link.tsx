@@ -20,7 +20,7 @@ export function MainLink({ link, onClick, showDescription = false, description }
       target="_blank"
       rel="noopener noreferrer"
       onClick={onClick}
-      className="relative rounded-xl border border-zinc-200 bg-white transition-all cursor-pointer hover:border-zinc-300 hover:shadow-sm hover:shadow-zinc-200/50 block p-3 group"
+      className="relative rounded-xl border border-zinc-200 bg-white transition-all cursor-pointer shadow-xs hover:border-zinc-300 hover:bg-accent/50 dark:hover:bg-input/64 hover:shadow-zinc-200/24 active:shadow-none block p-3 group"
     >
       <div className="flex gap-3">
         {displayImageUrl && (

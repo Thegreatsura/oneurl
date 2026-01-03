@@ -18,6 +18,13 @@ export function LandingNav() {
         </Link>
         <div className="flex items-center gap-4">
           <Button 
+            render={<Link href="/support" className="hover:text-foreground transition-colors">Sponsor OneURL</Link>} 
+            variant="ghost"
+            className="text-sm font-medium text-zinc-600 hover:text-zinc-900"
+          >
+            Sponsor OneURL
+          </Button>
+          <Button 
             render={<Link href="/login" />} 
             className="text-sm font-medium bg-zinc-900 text-white border-zinc-900 hover:bg-zinc-800 hover:border-zinc-800 transition-colors"
           >

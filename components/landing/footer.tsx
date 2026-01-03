@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { FeedbackDialog } from "@/components/feedback-dialog";
 
 export function LandingFooter() {
@@ -26,8 +27,9 @@ export function LandingFooter() {
              <div className="space-y-4">
                  <h4 className="font-medium text-sm">Community</h4>
                  <ul className="space-y-2 text-xs text-zinc-600">
-                     <li><a href="https://github.com/KartikLabhshetwar/oneurl" className="hover:text-foreground transition-colors">GitHub</a></li>
-                     <li><a href="https://x.com/code_kartik" className="hover:text-foreground transition-colors">Twitter</a></li>
+                     <li><a href="https://github.com/KartikLabhshetwar/oneurl" className="hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                     <li><a href="https://x.com/code_kartik" className="hover:text-foreground transition-colors" target="_blank" rel="noopener noreferrer">Twitter</a></li>
+                     <li><Link href="/support" className="hover:text-foreground transition-colors">Sponsor OneURL</Link></li>  
                  </ul>
                  <div className="pt-2">
                    <FeedbackDialog />

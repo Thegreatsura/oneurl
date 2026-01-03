@@ -13,12 +13,19 @@ export function LandingCTA() {
             Join thousands of creators who use OneURL to showcase their work. 
             Get started in seconds.
           </p>
-          <div className="flex justify-center items-center pt-4">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-3 pt-4">
             <Button 
               render={<Link href="/signup" />}
               className="text-sm font-medium px-6 h-10 bg-foreground text-background hover:bg-foreground/90"
             >
               Get Started
+            </Button>
+            <Button 
+              render={<Link href="/support" />}
+              variant="outline"
+              className="text-sm font-medium px-6 h-10 border-zinc-300 hover:bg-zinc-50"
+            >
+              Sponsor OneURL
             </Button>
           </div>
         </div>

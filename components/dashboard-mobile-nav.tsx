@@ -7,6 +7,7 @@ import {
   BarChart3,
   Settings,
   MoreHorizontal,
+  Heart,
 } from "lucide-react";
 import {
   Popover,
@@ -117,6 +118,19 @@ export function DashboardMobileNav({ user }: DashboardMobileNavProps) {
                   </p>
                 )}
               </div>
+              <Link
+                href="/dashboard/support"
+                onClick={() => setIsPopoverOpen(false)}
+                className="w-full"
+              >
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start rounded-lg"
+                >
+                  <Heart className="h-4 w-4" />
+                  <span>Support</span>
+                </Button>
+              </Link>
               <FeedbackDialog
                 trigger={
                   <Button

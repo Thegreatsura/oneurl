@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   MessageCircle,
+  Heart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -62,6 +63,11 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
       title: "Settings",
       url: "/dashboard/settings",
       icon: Settings,
+    },
+    {
+      title: "Support",
+      url: "/dashboard/support",
+      icon: Heart,
     },
   ];
 

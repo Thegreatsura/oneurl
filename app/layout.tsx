@@ -18,11 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OneURL - One URL for all your links",
   description: "Create a beautiful profile page to share all your important links in one place. Open source alternative to Linktree.",
-  metadataBase: new URL("https://oneurl-alpha.vercel.app"),
+  metadataBase: new URL("https://oneurl-lake.vercel.app"),
   openGraph: {
     title: "OneURL - One URL for all your links",
     description: "Create a beautiful profile page to share all your important links in one place. Open source alternative to Linktree.",
-    url: "https://oneurl-alpha.vercel.app",
+    url: "https://oneurl-lake.vercel.app",
     siteName: "OneURL",
     images: [
       {
@@ -51,10 +51,6 @@ export const metadata: Metadata = {
       "max-image-preview": "large",
       "max-snippet": -1,
     },
-  },
-  icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
   },
 };
 

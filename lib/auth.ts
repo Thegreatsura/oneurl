@@ -3,30 +3,12 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 
-const isProduction = process.env.NODE_ENV === "production";
 const baseURL = process.env.BETTER_AUTH_URL;
+const isProduction = process.env.NODE_ENV === "production";
 
-const getTrustedOrigins = (): string[] => {
-  const origins: string[] = [];
-  
-  if (baseURL) {
-    origins.push(baseURL);
-    
-    if (isProduction && baseURL.includes("www.")) {
-      const nonWww = baseURL.replace("www.", "");
-      origins.push(nonWww);
-    } else if (isProduction && !baseURL.includes("www.")) {
-      const withWww = baseURL.replace(/^(https?:\/\/)/, "$1www.");
-      origins.push(withWww);
-    }
-  }
-  
-  if (!isProduction) {
-    origins.push("http://localhost:3000");
-  }
-  
-  return origins;
-};
+const trustedOrigins = baseURL
+  ? [baseURL, ...(isProduction && baseURL.includes("www.") ? [baseURL.replace("www.", "")] : [])]
+  : ["http://localhost:3000"];
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {
@@ -34,7 +16,7 @@ export const auth = betterAuth({
   }),
   baseURL,
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: getTrustedOrigins(),
+  trustedOrigins,
   advanced: {
     useSecureCookies: isProduction,
     defaultCookieAttributes: {

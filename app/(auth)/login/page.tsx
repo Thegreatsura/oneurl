@@ -1,24 +1,39 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { authClient } from "@/lib/auth-client";
 import { SignInButton } from "@/components/sign-in-button";
 import { AuthSplitLayout } from "@/components/auth-split-layout";
 import Link from "next/link";
 
-export default async function LoginPage() {
-  const session = await auth.api.getSession({ headers: await headers() });
+export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session, isPending } = authClient.useSession();
 
-  if (session) {
-    const { db } = await import("@/lib/db");
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-    });
-
-    if (user?.isOnboarded) {
-      redirect("/dashboard");
-    } else {
-      redirect("/onboarding/username");
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      const checkOnboarding = async () => {
+        try {
+          const response = await fetch("/api/profile/check-onboarded");
+          const { isOnboarded } = await response.json();
+          const redirectUrl = searchParams.get("redirect") || (isOnboarded ? "/dashboard" : "/onboarding/username");
+          router.push(redirectUrl);
+        } catch {
+          router.push("/dashboard");
+        }
+      };
+      checkOnboarding();
     }
+  }, [session, isPending, router, searchParams]);
+
+  if (isPending) {
+    return null;
+  }
+
+  if (session?.user) {
+    return null;
   }
 
   return (

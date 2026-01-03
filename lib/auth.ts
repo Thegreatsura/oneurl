@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 
+const isProduction = process.env.NODE_ENV === "production";
 const baseURL = process.env.BETTER_AUTH_URL;
 
 const getTrustedOrigins = (): string[] => {
@@ -10,36 +11,21 @@ const getTrustedOrigins = (): string[] => {
   
   if (baseURL) {
     origins.push(baseURL);
-    const url = new URL(baseURL);
-    const hostname = url.hostname;
     
-    if (hostname.startsWith("www.")) {
+    if (isProduction && baseURL.includes("www.")) {
       const nonWww = baseURL.replace("www.", "");
       origins.push(nonWww);
-    } else {
-      origins.push(baseURL.replace(hostname, `www.${hostname}`));
+    } else if (isProduction && !baseURL.includes("www.")) {
+      const withWww = baseURL.replace(/^(https?:\/\/)/, "$1www.");
+      origins.push(withWww);
     }
   }
   
-  if (process.env.NODE_ENV === "development") {
+  if (!isProduction) {
     origins.push("http://localhost:3000");
   }
   
   return origins;
-};
-
-const getCookieDomain = (): string | undefined => {
-  if (!baseURL || process.env.NODE_ENV !== "production") return undefined;
-  const url = new URL(baseURL);
-  const hostname = url.hostname;
-  
-  if (hostname.startsWith("www.")) {
-    return hostname.replace("www.", "");
-  }
-  if (hostname.includes(".") && !hostname.includes("localhost")) {
-    return hostname;
-  }
-  return undefined;
 };
 
 export const auth = betterAuth({
@@ -50,14 +36,10 @@ export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins: getTrustedOrigins(),
   advanced: {
-    crossSubDomainCookies: process.env.NODE_ENV === "production" ? {
-      enabled: true,
-      domain: getCookieDomain(),
-    } : undefined,
-    useSecureCookies: process.env.NODE_ENV === "production",
+    useSecureCookies: isProduction,
     defaultCookieAttributes: {
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
     },
   },
   socialProviders: {

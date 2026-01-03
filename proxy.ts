@@ -9,21 +9,23 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (session && ["/login", "/signup"].includes(pathname)) {
-    const { db } = await import("@/lib/db");
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { isOnboarded: true },
-    });
+  if (session?.user) {
+    if (pathname === "/login" || pathname === "/signup") {
+      const { db } = await import("@/lib/db");
+      const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { isOnboarded: true },
+      });
 
-    if (user?.isOnboarded) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      const redirectUrl = user?.isOnboarded ? "/dashboard" : "/onboarding/username";
+      return NextResponse.redirect(new URL(redirectUrl, request.url));
     }
-    return NextResponse.redirect(new URL("/onboarding/username", request.url));
   }
 
-  if (!session && (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  if (!session?.user) {
+    if (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding")) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
   }
 
   return NextResponse.next();

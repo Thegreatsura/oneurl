@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { LinkDialog } from "@/components/link-dialog";
 import { IconLinkDialog } from "@/components/icon-link-dialog";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil } from "lucide-react";
 import { toastSuccess, toastError } from "@/lib/toast";
 import { IconLink } from "@/components/icon-link";
+import type { Link } from "@/lib/hooks/use-links";
 
-type Link = {
+type LocalLink = {
   id: string;
   title: string;
   url: string;
@@ -21,14 +22,16 @@ type Link = {
 
 export default function LinksPage() {
   const router = useRouter();
-  const [links, setLinks] = useState<Link[]>([]);
+  const [links, setLinks] = useState<LocalLink[]>([]);
   const [globalError, setGlobalError] = useState("");
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [iconLinkDialogOpen, setIconLinkDialogOpen] = useState(false);
-  const [iconLinkToEdit, setIconLinkToEdit] = useState<Link | null>(null);
+  const [linkToEdit, setLinkToEdit] = useState<Link | null>(null);
+  const [iconLinkToEdit, setIconLinkToEdit] = useState<LocalLink | null>(null);
 
   const handleAddLink = async (data: { title: string; url: string; icon?: string | null }) => {
-    const newLink: Link = {
+    const newLink: LocalLink = {
       id: `temp-${Date.now()}`,
       title: data.title,
       url: data.url,
@@ -51,13 +54,49 @@ export default function LinksPage() {
     }
   };
 
-  const handleIconLinkClick = (link: Link) => {
-    setIconLinkToEdit({
-      ...link,
+  const handleIconLinkClick = (link: LocalLink) => {
+    const linkToEditData: Link = {
+      id: link.id,
+      title: link.title,
+      url: link.url,
+      icon: link.icon ?? null,
       position: link.position ?? 0,
       isActive: link.isActive ?? true,
-    });
-    setIconLinkDialogOpen(true);
+    };
+    setLinkToEdit(linkToEditData);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditClick = (link: LocalLink) => {
+    const linkToEditData: Link = {
+      id: link.id,
+      title: link.title,
+      url: link.url,
+      icon: link.icon ?? null,
+      position: link.position ?? 0,
+      isActive: link.isActive ?? true,
+    };
+    setLinkToEdit(linkToEditData);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdate = async (data: { title: string; url: string; icon?: string | null }) => {
+    if (!linkToEdit) return;
+    setLinks(links.map(link => 
+      link.id === linkToEdit.id 
+        ? { ...link, title: data.title, url: data.url, icon: data.icon ?? null }
+        : link
+    ));
+    setEditDialogOpen(false);
+    setLinkToEdit(null);
+    toastSuccess("Link updated", `${data.title} has been updated`);
+  };
+
+  const handleEditDialogChange = (open: boolean) => {
+    if (!open) {
+      setLinkToEdit(null);
+    }
+    setEditDialogOpen(open);
   };
 
   const handleIconLinkSave = async (data: { title: string; url: string; icon?: string | null }) => {
@@ -171,14 +210,24 @@ export default function LinksPage() {
                                 <p className="font-medium truncate text-xs">{link.title}</p>
                                 <p className="text-xs text-zinc-500 truncate mt-0.5">{link.url}</p>
                               </div>
-                              <Button
-                                variant="destructive-outline"
-                                size="sm"
-                                onClick={() => removeLink(link.id)}
-                                className="ml-4 shrink-0"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <div className="flex items-center gap-2 ml-4 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleEditClick(link)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="destructive-outline"
+                                  size="sm"
+                                  onClick={() => removeLink(link.id)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </CardContent>
                           </Card>
                         ))}
@@ -198,6 +247,16 @@ export default function LinksPage() {
           title="Add New Link"
           description="Add a new link to your profile. Enter a title and URL."
           submitLabel="Add Link"
+        />
+
+        <LinkDialog
+          open={editDialogOpen}
+          onOpenChange={handleEditDialogChange}
+          onSubmit={handleUpdate}
+          initialData={linkToEdit}
+          title="Edit Link"
+          description="Update the title, URL, or link type for this link."
+          submitLabel="Save Changes"
         />
 
         <IconLinkDialog

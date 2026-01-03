@@ -142,8 +142,8 @@ export function DashboardClient({ initialProfile }: DashboardClientProps) {
   };
 
   const handleIconLinkClick = (link: Link) => {
-    setIconLinkToEdit(link);
-    setIconLinkDialogOpen(true);
+    setLinkToEdit(link);
+    setEditDialogOpen(true);
   };
 
   const handleIconLinkSave = async (data: { title: string; url: string; icon?: string | null }) => {

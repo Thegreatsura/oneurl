@@ -171,7 +171,6 @@ export default function LinksPage() {
       }
 
       toastSuccess("Links saved", "Your links have been saved successfully");
-      localStorage.removeItem("onboarding-links");
       window.dispatchEvent(new CustomEvent("onboarding-links-changed", {
         detail: { hasUnsavedLinks: false },
       }));

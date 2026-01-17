@@ -18,6 +18,8 @@ export default function PreviewClient() {
 
       if (res.ok) {
         toastSuccess("Profile published", "Your profile is now live!");
+        localStorage.removeItem("onboarding-links");
+        localStorage.removeItem("onboarding-username");
         router.push("/dashboard");
       } else {
         const data = await res.json();

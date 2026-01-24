@@ -81,7 +81,7 @@ export function DashboardSidebar({ user }: DashboardSidebarProps) {
             alt="OneURL"
             width={128}
             height={128}
-            className="h-20 w-20"
+            className="h-20 w-40"
           />
         </Link>
       </SidebarHeader>

@@ -12,9 +12,9 @@ export function LandingFooter() {
                     <Image 
                       src="/logo.png" 
                       alt="OneURL Logo" 
-                      width={32} 
-                      height={32} 
-                      className="w-8 h-8"
+                      width={128} 
+                      height={128} 
+                      className="w-40 h-20"
                     />
                     <span className="font-medium text-sm">OneURL</span>
                  </div>

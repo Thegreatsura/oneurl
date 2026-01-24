@@ -13,7 +13,7 @@ export function LandingNav() {
              alt="OneURL Logo" 
              width={128} 
              height={128} 
-             className="w-20 h-20"
+             className="w-40 h-20"
            />
         </Link>
         <div className="flex items-center gap-4">

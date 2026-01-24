@@ -41,9 +41,9 @@ export function ProfileHeaderButtons({
                   <Image
                     src="/logo.png"
                     alt="OneURL"
-                    width={40}
-                    height={40}
-                    className="h-10 w-10"
+                    width={128}
+                    height={128}
+                    className="h-12 w-20"
                     priority
                   />
                 </Link> as React.ReactElement

@@ -163,7 +163,7 @@ export default function OnboardingLayout({
               alt="OneURL"
               width={128}
               height={128}
-              className="h-12 w-12"
+              className="h-20 w-40"
             />
             <h1 className="text-sm font-medium font-mono">OneURL</h1>
           </Link>

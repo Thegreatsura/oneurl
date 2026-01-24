@@ -30,27 +30,29 @@ export function ProfileHeaderButtons({
     <>
       <TooltipProvider>
         <div className="flex items-center justify-between mb-6">
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Link
-                  href="/"
-                  className="flex h-10 w-10 items-center justify-center rounded-full hover:opacity-80 transition-opacity"
-                  aria-label="Go to OneURL homepage"
-                >
-                  <Image
-                    src="/logo.png"
-                    alt="OneURL"
-                    width={128}
-                    height={128}
-                    className="h-12 w-20"
-                    priority
-                  />
-                </Link> as React.ReactElement
-              }
-            />
-            <TooltipPopup>Go to OneURL homepage</TooltipPopup>
-          </Tooltip>
+          <div className="h-14 flex items-center shrink-0">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Link
+                    href="/"
+                    className="flex items-center justify-center hover:opacity-80 transition-opacity"
+                    aria-label="Go to OneURL homepage"
+                  >
+                    <Image
+                      src="/logo.png"
+                      alt="OneURL"
+                      width={128}
+                      height={128}
+                      className="h-10 w-auto object-contain"
+                      priority
+                    />
+                  </Link> as React.ReactElement
+                }
+              />
+              <TooltipPopup>Go to OneURL homepage</TooltipPopup>
+            </Tooltip>
+          </div>
           <Tooltip>
             <TooltipTrigger
               render={

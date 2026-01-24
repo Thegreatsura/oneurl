@@ -225,9 +225,9 @@ export function IconLink({ link, onClick }: IconLinkProps) {
           <Image
             src={link.icon}
             alt={linkTitle}
-            width={20}
-            height={20}
-            className="shrink-0 object-contain"
+            width={24}
+            height={24}
+            className="shrink-0 w-6 h-6 object-contain"
             unoptimized
             onError={(e) => {
               const target = e.target as HTMLImageElement;
@@ -241,7 +241,7 @@ export function IconLink({ link, onClick }: IconLinkProps) {
           <span className="text-lg leading-none hidden">🔗</span>
         </>
       ) : (
-        <span className="text-lg leading-none">{link.icon || "🔗"}</span>
+        <span className="text-2xl leading-none flex items-center justify-center">{link.icon || "🔗"}</span>
       )}
     </a>
   );

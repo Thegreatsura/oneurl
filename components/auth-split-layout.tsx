@@ -69,7 +69,7 @@ export function AuthSplitLayout({
                   alt="OneURL"
                   width={128}
                   height={128}
-                  className="h-25 w-25"
+                  className="h-25 w-45"
                 />
               </Link>
             </div>
